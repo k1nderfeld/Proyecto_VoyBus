@@ -7,7 +7,7 @@ const Session = require("../models/session")
 const db = require("../config/database")
 const HttpError = require("../utils/HttpError")
 const verifyTotp = require("../utils/totp")
-const sendPasswordResetEmail = require("./mail.services")
+const mailService = require("./mail.services")
 const authConfig = require("../config/auth")
 
 const dummyPasswordHash = "$2b$12$uCfjYQuaRpqMm7HoqQYv3O0fzoA4vMFpltTS2mqjwLwnl0zCBHT0y"
@@ -177,7 +177,7 @@ class AuthService {
         const resetUrl = `${baseUrl}${separator}token=${resetToken}`
 
         try {
-            await sendPasswordResetEmail(user.email, resetUrl)
+            await mailService.sendPasswordResetEmail(user.email, resetUrl)
         } catch {
             return
         }
@@ -229,27 +229,11 @@ class AuthService {
             throw new HttpError(401, "La sesión no es válida o ha expirado.")
         }
 
-        if (user.lockedUntil && user.lockedUntil > new Date()) {
-            const retryAfterSeconds = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000)
-            throw new HttpError(
-                429,
-                "Demasiados intentos fallidos. Inténtalo nuevamente más tarde.",
-                { retryAfterSeconds }
-            )
-        }
-
         if (user.status !== "active") {
             throw new HttpError(403, "La cuenta no está habilitada.")
         }
 
-        const currentPasswordMatches = await bcrypt.compare(data.currentPassword, user.password)
-
-        if (!currentPasswordMatches) {
-            await this.registerFailedAttempt(
-                user,
-                new HttpError(400, "La contraseña actual no es correcta.")
-            )
-        }
+        await this.verifyCurrentPassword(user, data.currentPassword)
 
         const passwordReused = await bcrypt.compare(data.newPassword, user.password)
 
@@ -280,6 +264,28 @@ class AuthService {
                 }
             )
         })
+    }
+
+    // Confirma que quien hace un cambio sensible es el dueño de la cuenta.
+    // Respeta el bloqueo temporal y cuenta los intentos fallidos.
+    async verifyCurrentPassword(user, password) {
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+            const retryAfterSeconds = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000)
+            throw new HttpError(
+                429,
+                "Demasiados intentos fallidos. Inténtalo nuevamente más tarde.",
+                { retryAfterSeconds }
+            )
+        }
+
+        const currentPasswordMatches = await bcrypt.compare(password, user.password)
+
+        if (!currentPasswordMatches) {
+            await this.registerFailedAttempt(
+                user,
+                new HttpError(400, "La contraseña actual no es correcta.")
+            )
+        }
     }
 
     async registerFailedAttempt(user, error) {

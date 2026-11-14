@@ -4,9 +4,15 @@ const cors = require("cors")
 require("dotenv").config({ quiet: true })
 
 const db = require("./config/database")
+const uploadsConfig = require("./config/uploads")
+const syncDatabase = require("./utils/syncDatabase")
 const User = require("./models/user")
 const Session = require("./models/session")
 const UserPreference = require("./models/userPreference")
+const Line = require("./models/line")
+const Stop = require("./models/stop")
+const FavoriteLine = require("./models/favoriteLine")
+const FavoriteStop = require("./models/favoriteStop")
 
 class Server {
     constructor() {
@@ -25,6 +31,7 @@ class Server {
         this.app.use(morgan("dev"))
         this.app.use(cors())
         this.app.use(express.json())
+        this.app.use(uploadsConfig.publicPath, express.static(uploadsConfig.uploadsDir))
     }
 
     routes() {
@@ -34,7 +41,7 @@ class Server {
 
     async connectDatabase() {
         await db.authenticate()
-        await db.sync({ force: false })
+        await syncDatabase(db)
     }
 
     async listen() {
