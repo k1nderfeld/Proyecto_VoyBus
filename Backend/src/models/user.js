@@ -10,6 +10,8 @@ class User extends Model {
         delete values.lockedUntil
         delete values.passwordResetTokenHash
         delete values.passwordResetExpiresAt
+        delete values.emailChangeTokenHash
+        delete values.emailChangeExpiresAt
         delete values.deletedAt
         return values
     }
@@ -40,6 +42,39 @@ User.init({
         type: DataTypes.STRING(20),
         allowNull: true,
         unique: true
+    },
+
+    // La unicidad se define como índice (ver "indexes"): SQLite no permite agregar
+    // columnas UNIQUE a una tabla existente.
+    alias: {
+        type: DataTypes.STRING(15),
+        allowNull: true,
+        validate: {
+            is: /^[A-Za-z0-9]{1,15}$/
+        }
+    },
+
+    photoUrl: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+
+    pendingEmail: {
+        type: DataTypes.STRING(120),
+        allowNull: true,
+        validate: {
+            isEmail: true
+        }
+    },
+
+    emailChangeTokenHash: {
+        type: DataTypes.STRING(64),
+        allowNull: true
+    },
+
+    emailChangeExpiresAt: {
+        type: DataTypes.DATE,
+        allowNull: true
     },
 
     password: {
@@ -100,7 +135,10 @@ User.init({
     modelName: "User",
     tableName: "users",
     timestamps: true,
-    paranoid: true
+    paranoid: true,
+    indexes: [
+        { name: "users_alias_unique", unique: true, fields: ["alias"] }
+    ]
 })
 
 module.exports = User

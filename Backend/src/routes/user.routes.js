@@ -1,14 +1,30 @@
 const { Router } = require("express")
-const { body } = require("express-validator")
+const { body, param } = require("express-validator")
 const { getPreferenceOptions, getPreferences, updatePreferences } = require("../controllers/preferences.controller")
+const {
+    getProfile,
+    updateProfile,
+    updatePhoto,
+    removePhoto,
+    requestEmailChange,
+    confirmEmailChange,
+    cancelEmailChange
+} = require("../controllers/profile.controller")
+const { listFavorites, addFavorite, removeFavorite } = require("../controllers/favorites.controller")
 const validateFields = require("../middlewares/validateFields")
 const authenticate = require("../middlewares/authenticate")
+const authorize = require("../middlewares/authorize")
+const uploadAvatar = require("../middlewares/uploadAvatar")
 const { preferenceGroups, preferenceDefinitions, preferencePath } = require("../config/preferences")
 
 const router = Router()
 
 const isPlainObject = (value) =>
     value !== null && typeof value === "object" && !Array.isArray(value)
+
+const passengerOnly = [authenticate, authorize("passenger")]
+
+/* ----------------------------- Preferencias (ACC-06) ----------------------------- */
 
 const nestedGroups = Object.keys(preferenceGroups).filter((group) => group !== "general")
 const allowedPaths = new Set(preferenceDefinitions.map(preferencePath))
@@ -75,5 +91,99 @@ router.patch(
     validateFields,
     updatePreferences
 )
+
+/* -------------------------------- Perfil (ACC-05) -------------------------------- */
+
+const editableProfileFields = ["name", "alias"]
+
+const profileBodyRule = body().custom((value) => {
+    if (!isPlainObject(value) || !Object.keys(value).length) {
+        throw new Error("Debes indicar al menos un campo para actualizar.")
+    }
+
+    const unknownFields = Object.keys(value).filter((field) => !editableProfileFields.includes(field))
+
+    if (unknownFields.length) {
+        throw new Error(
+            `Campos no permitidos: ${unknownFields.join(", ")}. ` +
+            "El correo y la foto se cambian en sus propias secciones."
+        )
+    }
+
+    return true
+})
+
+const profileRules = [
+    profileBodyRule,
+
+    body("name")
+        .optional()
+        .isString().withMessage("El nombre debe ser texto.")
+        .trim()
+        .notEmpty().withMessage("El nombre es obligatorio.")
+        .isLength({ min: 2, max: 80 }).withMessage("El nombre debe tener entre 2 y 80 caracteres."),
+
+    // null o "" quitan el alias.
+    body("alias")
+        .optional()
+        .custom((value) => {
+            if (value === null || value === "") return true
+
+            if (typeof value !== "string" || !/^[A-Za-z0-9]{1,15}$/.test(value.trim())) {
+                throw new Error("El alias debe tener hasta 15 caracteres alfanuméricos, sin espacios ni símbolos.")
+            }
+
+            return true
+        })
+]
+
+const emailChangeRules = [
+    body("newEmail")
+        .isString().withMessage("El correo electrónico debe ser texto.")
+        .trim()
+        .notEmpty().withMessage("El nuevo correo electrónico es obligatorio.")
+        .isEmail().withMessage("El correo electrónico no es válido.")
+        .normalizeEmail()
+        .isLength({ max: 120 }).withMessage("El correo electrónico supera los 120 caracteres."),
+
+    body("currentPassword")
+        .isString().withMessage("La contraseña actual debe ser texto.")
+        .notEmpty().withMessage("La contraseña actual es obligatoria.")
+]
+
+const confirmEmailChangeRules = [
+    body("token")
+        .isString().withMessage("El enlace no es válido o ha expirado.")
+        .trim()
+        .matches(/^[a-f0-9]{64}$/i).withMessage("El enlace no es válido o ha expirado.")
+]
+
+router.get("/me", authenticate, getProfile)
+
+router.patch("/me", passengerOnly, profileRules, validateFields, updateProfile)
+
+router.put("/me/photo", passengerOnly, uploadAvatar, updatePhoto)
+
+router.delete("/me/photo", passengerOnly, removePhoto)
+
+router.post("/me/email-change", passengerOnly, emailChangeRules, validateFields, requestEmailChange)
+
+router.delete("/me/email-change", passengerOnly, cancelEmailChange)
+
+// Pública: se abre desde el enlace enviado al nuevo correo, posiblemente en otro dispositivo.
+router.post("/email-change/confirm", confirmEmailChangeRules, validateFields, confirmEmailChange)
+
+/* ------------------------------- Favoritos (ACC-05) ------------------------------ */
+
+const favoriteIdRule = [
+    param("id").isInt({ min: 1 }).withMessage("El identificador no es válido.")
+]
+
+router.get("/me/favorites", passengerOnly, listFavorites)
+
+for (const type of ["lines", "stops"]) {
+    router.post(`/me/favorites/${type}/:id`, passengerOnly, favoriteIdRule, validateFields, addFavorite(type))
+    router.delete(`/me/favorites/${type}/:id`, passengerOnly, favoriteIdRule, validateFields, removeFavorite(type))
+}
 
 module.exports = router
