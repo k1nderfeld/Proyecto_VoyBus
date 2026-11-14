@@ -6,13 +6,15 @@ require("dotenv").config({ quiet: true })
 const db = require("./config/database")
 const User = require("./models/user")
 const Session = require("./models/session")
+const UserPreference = require("./models/userPreference")
 
 class Server {
     constructor() {
         this.app = express()
         this.port = process.env.PORT || 3000
         this.paths = {
-            auth: "/api/auth"
+            auth: "/api/auth",
+            users: "/api/users"
         }
 
         this.middlewares()
@@ -27,6 +29,7 @@ class Server {
 
     routes() {
         this.app.use(this.paths.auth, require("./routes/auth.routes"))
+        this.app.use(this.paths.users, require("./routes/user.routes"))
     }
 
     async connectDatabase() {
