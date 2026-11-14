@@ -8,6 +8,8 @@ class User extends Model {
         delete values.twoFactorSecret
         delete values.failedLoginAttempts
         delete values.lockedUntil
+        delete values.passwordResetTokenHash
+        delete values.passwordResetExpiresAt
         delete values.deletedAt
         return values
     }
@@ -76,6 +78,16 @@ User.init({
 
     twoFactorSecret: {
         type: DataTypes.STRING,
+        allowNull: true
+    },
+
+    passwordResetTokenHash: {
+        type: DataTypes.STRING(64),
+        allowNull: true
+    },
+
+    passwordResetExpiresAt: {
+        type: DataTypes.DATE,
         allowNull: true
     },
 

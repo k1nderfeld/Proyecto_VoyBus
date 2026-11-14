@@ -1,5 +1,25 @@
 const authService = require("../services/auth.services")
 const HttpError = require("../utils/HttpError")
+
+const respondWithError = (res, error, message) => {
+    if (error instanceof HttpError) {
+        if (error.details.retryAfterSeconds) {
+            res.set("Retry-After", String(error.details.retryAfterSeconds))
+        }
+
+        return res.status(error.status).json({
+            success: false,
+            message: error.message,
+            ...error.details
+        })
+    }
+
+    return res.status(500).json({
+        success: false,
+        message
+    })
+}
+
 const register = async (req, res) => {
     try {
         const user = await authService.register(req.body)
@@ -10,18 +30,7 @@ const register = async (req, res) => {
             data: user
         })
     } catch (error) {
-        if (error instanceof HttpError) {
-            return res.status(error.status).json({
-                success: false,
-                message: error.message,
-                ...error.details
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: "No se pudo completar el registro."
-        })
+        return respondWithError(res, error, "No se pudo completar el registro.")
     }
 }
 
@@ -35,22 +44,7 @@ const login = async (req, res) => {
             data: session
         })
     } catch (error) {
-        if (error instanceof HttpError) {
-            if (error.details.retryAfterSeconds) {
-                res.set("Retry-After", String(error.details.retryAfterSeconds))
-            }
-
-            return res.status(error.status).json({
-                success: false,
-                message: error.message,
-                ...error.details
-            })
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: "No se pudo iniciar sesión."
-        })
+        return respondWithError(res, error, "No se pudo iniciar sesión.")
     }
 }
 
@@ -62,12 +56,60 @@ const logout = async (req, res) => {
             success: true,
             message: "Sesión cerrada correctamente."
         })
-    } catch {
-        return res.status(500).json({
-            success: false,
-            message: "No se pudo cerrar la sesión."
-        })
+    } catch (error) {
+        return respondWithError(res, error, "No se pudo cerrar la sesión.")
     }
 }
 
-module.exports = { register, login, logout }
+const forgotPassword = async (req, res) => {
+    try {
+        await authService.forgotPassword(req.body.email)
+
+        return res.json({
+            success: true,
+            message: "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña."
+        })
+    } catch (error) {
+        return respondWithError(res, error, "No se pudo procesar la solicitud.")
+    }
+}
+
+const resetPassword = async (req, res) => {
+    try {
+        await authService.resetPassword(req.body)
+
+        return res.json({
+            success: true,
+            message: "Tu contraseña fue actualizada."
+        })
+    } catch (error) {
+        return respondWithError(res, error, "No se pudo restablecer la contraseña.")
+    }
+}
+
+const changePassword = async (req, res) => {
+    try {
+        await authService.changePassword({
+            userId: req.auth.userId,
+            sessionId: req.auth.sessionId,
+            currentPassword: req.body.currentPassword,
+            newPassword: req.body.newPassword
+        })
+
+        return res.json({
+            success: true,
+            message: "Tu contraseña fue actualizada."
+        })
+    } catch (error) {
+        return respondWithError(res, error, "No se pudo actualizar la contraseña.")
+    }
+}
+
+module.exports = {
+    register,
+    login,
+    logout,
+    forgotPassword,
+    resetPassword,
+    changePassword
+}

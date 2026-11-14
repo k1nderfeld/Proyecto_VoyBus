@@ -1,10 +1,17 @@
 const { Router } = require("express")
 const { body } = require("express-validator")
-const { register, login, logout } = require("../controllers/auth.controller")
+const { register, login, logout, forgotPassword, resetPassword, changePassword } = require("../controllers/auth.controller")
 const validateFields = require("../middlewares/validateFields")
 const authenticate = require("../middlewares/authenticate")
 
 const router = Router()
+
+const newPasswordRules = (field) =>
+    body(field)
+        .isString().withMessage("La contraseña debe ser texto.")
+        .isLength({ min: 8, max: 72 }).withMessage("La contraseña debe tener entre 8 y 72 caracteres.")
+        .matches(/[A-Za-z]/).withMessage("La contraseña debe incluir al menos una letra.")
+        .matches(/\d/).withMessage("La contraseña debe incluir al menos un número.")
 
 router.post(
     "/register",
@@ -84,5 +91,56 @@ router.post(
 )
 
 router.post("/logout", authenticate, logout)
+
+router.post(
+    "/forgot-password",
+    [
+        body("email")
+            .isString().withMessage("El correo electrónico debe ser texto.")
+            .trim()
+            .notEmpty().withMessage("El correo electrónico es obligatorio.")
+            .isEmail().withMessage("El correo electrónico no es válido.")
+            .normalizeEmail()
+            .isLength({ max: 120 }).withMessage("El correo electrónico supera los 120 caracteres.")
+    ],
+    validateFields,
+    forgotPassword
+)
+
+router.post(
+    "/reset-password",
+    [
+        body("token")
+            .isString().withMessage("El enlace no es válido o ha expirado.")
+            .trim()
+            .matches(/^[a-f0-9]{64}$/i).withMessage("El enlace no es válido o ha expirado."),
+
+        newPasswordRules("newPassword"),
+
+        body("confirmPassword")
+            .custom((value, { req }) => value === req.body.newPassword)
+            .withMessage("Las contraseñas no coinciden.")
+    ],
+    validateFields,
+    resetPassword
+)
+
+router.post(
+    "/change-password",
+    authenticate,
+    [
+        body("currentPassword")
+            .isString().withMessage("La contraseña actual debe ser texto.")
+            .notEmpty().withMessage("La contraseña actual es obligatoria."),
+
+        newPasswordRules("newPassword"),
+
+        body("confirmPassword")
+            .custom((value, { req }) => value === req.body.newPassword)
+            .withMessage("Las contraseñas no coinciden.")
+    ],
+    validateFields,
+    changePassword
+)
 
 module.exports = router

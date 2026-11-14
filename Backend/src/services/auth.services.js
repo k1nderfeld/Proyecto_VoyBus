@@ -4,8 +4,10 @@ const jwt = require("jsonwebtoken")
 const { Op } = require("sequelize")
 const User = require("../models/user")
 const Session = require("../models/session")
+const db = require("../config/database")
 const HttpError = require("../utils/HttpError")
 const verifyTotp = require("../utils/totp")
+const sendPasswordResetEmail = require("./mail.services")
 const authConfig = require("../config/auth")
 
 const dummyPasswordHash = "$2b$12$uCfjYQuaRpqMm7HoqQYv3O0fzoA4vMFpltTS2mqjwLwnl0zCBHT0y"
@@ -152,6 +154,132 @@ class AuthService {
             { revokedAt: new Date() },
             { where: { id: sessionId, revokedAt: null } }
         )
+    }
+
+    async forgotPassword(email) {
+        const user = await User.findOne({
+            where: { email: email.trim().toLowerCase() }
+        })
+
+        if (!user || !user.email || user.status !== "active") return
+
+        const resetToken = crypto.randomBytes(32).toString("hex")
+        const resetTokenHash = crypto.createHash("sha256").update(resetToken).digest("hex")
+        const resetExpiresAt = new Date(Date.now() + 15 * 60000)
+
+        await user.update({
+            passwordResetTokenHash: resetTokenHash,
+            passwordResetExpiresAt: resetExpiresAt
+        })
+
+        const baseUrl = process.env.PASSWORD_RESET_URL || "http://localhost:3000/reset-password"
+        const separator = baseUrl.includes("?") ? "&" : "?"
+        const resetUrl = `${baseUrl}${separator}token=${resetToken}`
+
+        try {
+            await sendPasswordResetEmail(user.email, resetUrl)
+        } catch {
+            return
+        }
+    }
+
+    async resetPassword(data) {
+        const resetToken = data.token.trim().toLowerCase()
+        const resetTokenHash = crypto.createHash("sha256").update(resetToken).digest("hex")
+        const user = await User.findOne({
+            where: {
+                passwordResetTokenHash: resetTokenHash,
+                passwordResetExpiresAt: { [Op.gt]: new Date() },
+                status: "active"
+            }
+        })
+
+        if (!user) {
+            throw new HttpError(400, "El enlace no es válido o ha expirado.")
+        }
+
+        const passwordReused = await bcrypt.compare(data.newPassword, user.password)
+
+        if (passwordReused) {
+            throw new HttpError(400, "La nueva contraseña debe ser diferente a la actual.")
+        }
+
+        const passwordHash = await bcrypt.hash(data.newPassword, 12)
+
+        await db.transaction(async (transaction) => {
+            await user.update({
+                password: passwordHash,
+                passwordResetTokenHash: null,
+                passwordResetExpiresAt: null,
+                failedLoginAttempts: 0,
+                lockedUntil: null
+            }, { transaction })
+
+            await Session.update(
+                { revokedAt: new Date() },
+                { where: { userId: user.id, revokedAt: null }, transaction }
+            )
+        })
+    }
+
+    async changePassword(data) {
+        const user = await User.findByPk(data.userId)
+
+        if (!user) {
+            throw new HttpError(401, "La sesión no es válida o ha expirado.")
+        }
+
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+            const retryAfterSeconds = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 1000)
+            throw new HttpError(
+                429,
+                "Demasiados intentos fallidos. Inténtalo nuevamente más tarde.",
+                { retryAfterSeconds }
+            )
+        }
+
+        if (user.status !== "active") {
+            throw new HttpError(403, "La cuenta no está habilitada.")
+        }
+
+        const currentPasswordMatches = await bcrypt.compare(data.currentPassword, user.password)
+
+        if (!currentPasswordMatches) {
+            await this.registerFailedAttempt(
+                user,
+                new HttpError(400, "La contraseña actual no es correcta.")
+            )
+        }
+
+        const passwordReused = await bcrypt.compare(data.newPassword, user.password)
+
+        if (passwordReused) {
+            throw new HttpError(400, "La nueva contraseña debe ser diferente a la actual.")
+        }
+
+        const passwordHash = await bcrypt.hash(data.newPassword, 12)
+
+        await db.transaction(async (transaction) => {
+            await user.update({
+                password: passwordHash,
+                passwordResetTokenHash: null,
+                passwordResetExpiresAt: null,
+                failedLoginAttempts: 0,
+                lockedUntil: null
+            }, { transaction })
+
+            await Session.update(
+                { revokedAt: new Date() },
+                {
+                    where: {
+                        userId: user.id,
+                        revokedAt: null,
+                        id: { [Op.ne]: data.sessionId }
+                    },
+                    transaction
+                }
+            )
+        })
     }
 
     async registerFailedAttempt(user, error) {
