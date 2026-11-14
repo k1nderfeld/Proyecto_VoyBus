@@ -5,6 +5,7 @@ require("dotenv").config({ quiet: true })
 
 const db = require("./config/database")
 const User = require("./models/user")
+const Session = require("./models/session")
 
 class Server {
     constructor() {
@@ -30,7 +31,7 @@ class Server {
 
     async connectDatabase() {
         await db.authenticate()
-        await User.sync({ force: false })
+        await db.sync({ force: false })
     }
 
     async listen() {

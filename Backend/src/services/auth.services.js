@@ -1,7 +1,9 @@
 const bcrypt = require("bcryptjs")
+const crypto = require("crypto")
 const jwt = require("jsonwebtoken")
 const { Op } = require("sequelize")
 const User = require("../models/user")
+const Session = require("../models/session")
 const HttpError = require("../utils/HttpError")
 const verifyTotp = require("../utils/totp")
 const authConfig = require("../config/auth")
@@ -118,11 +120,24 @@ class AuthService {
 
         await user.update({ failedLoginAttempts: 0, lockedUntil: null })
 
+        const sessionId = crypto.randomUUID()
         const token = jwt.sign(
             { role: user.role },
             authConfig.jwtSecret,
-            { subject: String(user.id), expiresIn: authConfig.jwtExpiresIn }
+            {
+                subject: String(user.id),
+                expiresIn: authConfig.jwtExpiresIn,
+                jwtid: sessionId
+            }
         )
+
+        const { exp } = jwt.decode(token)
+
+        await Session.create({
+            id: sessionId,
+            userId: user.id,
+            expiresAt: new Date(exp * 1000)
+        })
 
         return {
             token,
@@ -130,6 +145,13 @@ class AuthService {
             expiresIn: authConfig.jwtExpiresIn,
             user
         }
+    }
+
+    async logout(sessionId) {
+        await Session.update(
+            { revokedAt: new Date() },
+            { where: { id: sessionId, revokedAt: null } }
+        )
     }
 
     async registerFailedAttempt(user, error) {

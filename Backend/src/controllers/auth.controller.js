@@ -1,6 +1,5 @@
 const authService = require("../services/auth.services")
 const HttpError = require("../utils/HttpError")
-
 const register = async (req, res) => {
     try {
         const user = await authService.register(req.body)
@@ -55,4 +54,20 @@ const login = async (req, res) => {
     }
 }
 
-module.exports = { register, login }
+const logout = async (req, res) => {
+    try {
+        await authService.logout(req.auth.sessionId)
+
+        return res.json({
+            success: true,
+            message: "Sesión cerrada correctamente."
+        })
+    } catch {
+        return res.status(500).json({
+            success: false,
+            message: "No se pudo cerrar la sesión."
+        })
+    }
+}
+
+module.exports = { register, login, logout }
