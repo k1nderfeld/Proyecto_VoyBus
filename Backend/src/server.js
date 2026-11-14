@@ -1,52 +1,43 @@
 const express = require("express")
 const morgan = require("morgan")
 const cors = require("cors")
-require("dotenv").config
+require("dotenv").config({ quiet: true })
 
-const db = require('./config/database')
+const db = require("./config/database")
+const User = require("./models/user")
 
 class Server {
     constructor() {
         this.app = express()
         this.port = process.env.PORT || 3000
-        this.server = require("http").createServer(this.app)
-
         this.paths = {
-            user: 'api/user'
+            auth: "/api/auth"
         }
 
-        this.connectDatabase()
-
-        this.app.use(express.json())
-
         this.middlewares()
-
         this.routes()
     }
 
-    async connectDatabase() {
-        await db.authenticate().then(() => {
-            console.log("Base de datos conectada exitosamente.")
-        }).catch((err) => {
-            console.error("No se pudo establecer conexión con la base de datos", err)
-        })
-
-        // carga de modelos a la base de datos
-        await User.sync({ force: false })
-    }
-
     middlewares() {
-        this.app.use(morgan('dev'))
+        this.app.use(morgan("dev"))
         this.app.use(cors())
+        this.app.use(express.json())
     }
 
     routes() {
-        this.app.use(this.paths.user, require('./routes/user.route'))
+        this.app.use(this.paths.auth, require("./routes/auth.routes"))
     }
 
-    listen() {
+    async connectDatabase() {
+        await db.authenticate()
+        await User.sync({ force: false })
+    }
+
+    async listen() {
+        await this.connectDatabase()
+
         this.app.listen(this.port, () => {
-            console.log(`El servidor se esta ejecutando en la url: http://localhost:${this.PORT}`)
+            console.log(`Servidor disponible en http://localhost:${this.port}`)
         })
     }
 }
