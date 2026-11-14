@@ -5,6 +5,10 @@ class User extends Model {
     toJSON() {
         const values = { ...this.get() }
         delete values.password
+        delete values.twoFactorSecret
+        delete values.failedLoginAttempts
+        delete values.lockedUntil
+        delete values.deletedAt
         return values
     }
 }
@@ -45,6 +49,34 @@ User.init({
         type: DataTypes.STRING(20),
         allowNull: false,
         defaultValue: "passenger"
+    },
+
+    status: {
+        type: DataTypes.STRING(20),
+        allowNull: false,
+        defaultValue: "active"
+    },
+
+    failedLoginAttempts: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+    },
+
+    lockedUntil: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+
+    twoFactorEnabled: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
+
+    twoFactorSecret: {
+        type: DataTypes.STRING,
+        allowNull: true
     },
 
     acceptedTermsAt: {

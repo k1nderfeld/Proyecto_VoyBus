@@ -1,6 +1,6 @@
 const { Router } = require("express")
 const { body } = require("express-validator")
-const { register } = require("../controllers/auth.controller")
+const { register, login } = require("../controllers/auth.controller")
 const validateFields = require("../middlewares/validateFields")
 
 const router = Router()
@@ -48,6 +48,38 @@ router.post(
     ],
     validateFields,
     register
+)
+
+router.post(
+    "/login",
+    [
+        body("email")
+            .custom((value, { req }) => Boolean(value || req.body.phone))
+            .withMessage("Debes indicar un correo electrónico o un teléfono.")
+            .optional({ values: "falsy" })
+            .isString().withMessage("El correo electrónico debe ser texto.")
+            .trim()
+            .isEmail().withMessage("El correo electrónico no es válido.")
+            .normalizeEmail(),
+
+        body("phone")
+            .optional({ values: "falsy" })
+            .isString().withMessage("El teléfono debe ser texto.")
+            .trim()
+            .matches(/^\+?[1-9]\d{7,14}$/).withMessage("El teléfono debe incluir entre 8 y 15 dígitos y puede iniciar con +."),
+
+        body("password")
+            .isString().withMessage("La contraseña debe ser texto.")
+            .notEmpty().withMessage("La contraseña es obligatoria."),
+
+        body("twoFactorCode")
+            .optional({ values: "falsy" })
+            .isString().withMessage("El código de verificación debe ser texto.")
+            .trim()
+            .matches(/^\d{6}$/).withMessage("El código de verificación debe tener 6 dígitos.")
+    ],
+    validateFields,
+    login
 )
 
 module.exports = router
