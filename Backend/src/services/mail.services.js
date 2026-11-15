@@ -44,6 +44,22 @@ class MailService {
         })
     }
 
+    // Código para verificar el correo al registrarse (ACC-01).
+    // Sin SMTP, en desarrollo el código se muestra en la consola para poder completar la verificación.
+    async sendVerificationCode(to, code) {
+        if (!transporter && process.env.NODE_ENV !== "production") {
+            console.info(`[Correo no enviado: SMTP no configurado] Código de verificación para ${to}: ${code}`)
+            return
+        }
+
+        await this.sendMail({
+            to,
+            subject: "Tu código de verificación de VoyBus",
+            text: `Tu código de verificación de VoyBus es ${code}. Vence en 15 minutos. Si no creaste una cuenta, ignora este mensaje.`,
+            html: `<p>Tu código de verificación de VoyBus es:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px">${code}</p><p>Vence en 15 minutos. Si no creaste una cuenta, ignora este mensaje.</p>`
+        })
+    }
+
     async sendEmailChangeVerification(to, confirmUrl) {
         await this.sendMail({
             to,

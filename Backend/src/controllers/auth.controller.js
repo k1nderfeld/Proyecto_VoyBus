@@ -3,12 +3,15 @@ const respondWithError = require("../utils/respondWithError")
 
 const register = async (req, res) => {
     try {
-        const user = await authService.register(req.body)
+        const { user, channel, codeSent } = await authService.register(req.body)
+        const destination = channel === "email" ? "a tu correo" : "por SMS a tu teléfono"
 
         return res.status(201).json({
             success: true,
-            message: "Cuenta creada correctamente.",
-            data: user
+            message: codeSent
+                ? `Cuenta creada. Te enviamos un código ${destination} para verificarla.`
+                : "Cuenta creada, pero no pudimos enviar el código de verificación. Pide uno nuevo.",
+            data: { user, verification: { channel, codeSent } }
         })
     } catch (error) {
         return respondWithError(res, error, "No se pudo completar el registro.")
@@ -86,8 +89,52 @@ const changePassword = async (req, res) => {
     }
 }
 
+const verify = async (req, res) => {
+    try {
+        const session = await authService.verifyContact(req.body)
+
+        return res.json({
+            success: true,
+            message: "Cuenta verificada. Ya iniciaste sesión.",
+            data: session
+        })
+    } catch (error) {
+        return respondWithError(res, error, "No se pudo verificar la cuenta.")
+    }
+}
+
+const resendVerification = async (req, res) => {
+    try {
+        await authService.resendVerification(req.body)
+
+        return res.json({
+            success: true,
+            message: "Si la cuenta está pendiente de verificación, te enviamos un nuevo código."
+        })
+    } catch (error) {
+        return respondWithError(res, error, "No se pudo enviar el código.")
+    }
+}
+
+const googleLogin = async (req, res) => {
+    try {
+        const session = await authService.googleLogin(req.body)
+
+        return res.json({
+            success: true,
+            message: "Sesión iniciada con Google.",
+            data: session
+        })
+    } catch (error) {
+        return respondWithError(res, error, "No se pudo iniciar sesión con Google.")
+    }
+}
+
 module.exports = {
     register,
+    verify,
+    resendVerification,
+    googleLogin,
     login,
     logout,
     forgotPassword,

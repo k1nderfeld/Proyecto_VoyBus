@@ -12,10 +12,19 @@ class User extends Model {
         delete values.passwordResetExpiresAt
         delete values.emailChangeTokenHash
         delete values.emailChangeExpiresAt
+        delete values.verificationCodeHash
+        delete values.verificationExpiresAt
+        delete values.verificationAttempts
+        delete values.verificationSentAt
+        delete values.twoFactorPendingSecret
+        delete values.googleId
         delete values.deletedAt
         return values
     }
 }
+
+// "pending": la cuenta se creó pero falta verificar el correo o teléfono (ACC-01).
+User.STATUSES = ["pending", "active", "disabled"]
 
 User.init({
     id: {
@@ -129,6 +138,40 @@ User.init({
     acceptedTermsAt: {
         type: DataTypes.DATE,
         allowNull: false
+    },
+
+    // Código para verificar el medio de contacto (ACC-01). Se guarda solo su hash.
+    verificationCodeHash: {
+        type: DataTypes.STRING(64),
+        allowNull: true
+    },
+
+    verificationExpiresAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+
+    verificationAttempts: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+    },
+
+    verificationSentAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+
+    // Clave de la verificación en dos pasos mientras se configura; pasa a twoFactorSecret al confirmarla.
+    twoFactorPendingSecret: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+
+    // Identificador de la cuenta de Google vinculada. Único (ver "indexes").
+    googleId: {
+        type: DataTypes.STRING(64),
+        allowNull: true
     }
 }, {
     sequelize: db,
@@ -137,7 +180,8 @@ User.init({
     timestamps: true,
     paranoid: true,
     indexes: [
-        { name: "users_alias_unique", unique: true, fields: ["alias"] }
+        { name: "users_alias_unique", unique: true, fields: ["alias"] },
+        { name: "users_google_id_unique", unique: true, fields: ["googleId"] }
     ]
 })
 

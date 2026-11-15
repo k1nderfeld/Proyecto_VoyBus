@@ -63,4 +63,28 @@ const verifyTotp = (secret, code, window = 1) => {
     return false
 }
 
+// Clave aleatoria en base32 (160 bits), el formato que usan las aplicaciones autenticadoras.
+const generateSecret = (bytes = 20) => {
+    const buffer = crypto.randomBytes(bytes)
+    let bits = 0
+    let value = 0
+    let output = ""
+
+    for (const byte of buffer) {
+        value = (value << 8) | byte
+        bits += 8
+
+        while (bits >= 5) {
+            output += alphabet[(value >>> (bits - 5)) & 31]
+            bits -= 5
+        }
+    }
+
+    if (bits > 0) output += alphabet[(value << (5 - bits)) & 31]
+
+    return output
+}
+
 module.exports = verifyTotp
+module.exports.generateSecret = generateSecret
+module.exports.generateCode = generateCode
