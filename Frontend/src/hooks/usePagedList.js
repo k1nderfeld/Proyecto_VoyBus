@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-const initialState = { key: null, items: [], page: 0, totalPages: 0, total: 0, error: null, loadingMore: false, moreError: null }
+const initialState = { key: null, items: [], page: 0, totalPages: 0, total: 0, meta: null, error: null, loadingMore: false, moreError: null }
 
 // Lista con carga progresiva (RNF-05): trae la página 1 y suma las siguientes al llegar al final.
 // fetchPage({ page, signal }) debe devolver { items, pagination } como responde el backend.
@@ -30,7 +30,9 @@ export function usePagedList(fetchPage, deps = []) {
                     items: data.items,
                     page: data.pagination.page,
                     totalPages: data.pagination.totalPages,
-                    total: data.pagination.total
+                    total: data.pagination.total,
+                    // Datos adicionales de la respuesta (por ejemplo el aviso del historial).
+                    meta: { ...data, items: undefined, pagination: undefined }
                 })
             })
             .catch((error) => {
@@ -81,6 +83,7 @@ export function usePagedList(fetchPage, deps = []) {
     return {
         items: loading && !sameQuery ? [] : state.items,
         total: state.total,
+        meta: loading && !sameQuery ? null : state.meta,
         loading: loading && !sameQuery,
         refreshing,
         error: loading ? null : state.error,

@@ -16,7 +16,7 @@
   "main": "./src/app.js",
   "scripts": {
     "dev": "nodemon",
-    "start": "node",
+    "start": "node src/app.js",
     "migrate": "npx sequelize-cli db:migrate",
     "seed": "node src/seeders/index.js"
   },

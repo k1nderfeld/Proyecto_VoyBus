@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from "react-native"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
 import { AppText } from "./AppText"
+import { Badge } from "./Badge"
 import { Card } from "./Card"
 import { FavoriteButton } from "./FavoriteButton"
 import { LineBadge } from "./LineBadge"
@@ -33,6 +34,7 @@ export function StopCard({ stop }) {
                         <AppText variant="caption" tone="muted">
                             {stop.code}
                         </AppText>
+                        {stop.status === "inactive" && <Badge label="Ya no está disponible" tone="neutral" />}
                     </View>
                 </View>
 

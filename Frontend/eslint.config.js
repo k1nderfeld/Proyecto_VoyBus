@@ -16,7 +16,8 @@ module.exports = defineConfig([
                 require: "readonly",
                 module: "writable",
                 process: "readonly",
-                console: "readonly"
+                console: "readonly",
+                Buffer: "readonly"
             }
         }
     }
