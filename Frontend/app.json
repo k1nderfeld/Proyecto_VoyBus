@@ -43,6 +43,13 @@
         {
           "locationWhenInUsePermission": "VoyBus usa tu ubicación solo para centrar el mapa y mostrarte los paraderos cercanos."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "VoyBus usa tus fotos solo para que elijas tu foto de perfil.",
+          "cameraPermission": "VoyBus usa la cámara solo para que tomes tu foto de perfil."
+        }
       ]
     ],
     "experiments": {

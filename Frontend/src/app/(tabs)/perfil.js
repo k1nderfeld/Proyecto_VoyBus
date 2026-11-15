@@ -21,12 +21,12 @@ const roleLabels = {
     admin: "Administrador"
 }
 
-// Las secciones de la cuenta se completan en la rama feat/accountScreens (ACC-05, ACC-06 y ACC-07).
 const accountSections = [
-    { icon: "person-outline", title: "Mi perfil", description: "Nombre, alias, foto y correo" },
-    { icon: "options-outline", title: "Preferencias", description: "Idioma, tema y notificaciones" },
-    { icon: "shield-checkmark-outline", title: "Seguridad", description: "Cambiar contraseña" },
-    { icon: "time-outline", title: "Historial de viajes", description: "Tus viajes y solicitudes de parada", passengerOnly: true }
+    { href: "/cuenta/perfil", icon: "person-outline", title: "Mi perfil", description: "Nombre, alias, foto y correo" },
+    { href: "/favoritos", icon: "heart-outline", title: "Mis favoritos", description: "Líneas y paraderos guardados", passengerOnly: true },
+    { href: "/historial", icon: "time-outline", title: "Historial de viajes", description: "Tus viajes y solicitudes de parada", passengerOnly: true },
+    { href: "/cuenta/preferencias", icon: "options-outline", title: "Preferencias", description: "Idioma, tema, notificaciones y privacidad" },
+    { href: "/cuenta/seguridad", icon: "shield-checkmark-outline", title: "Seguridad", description: "Cambiar contraseña" }
 ]
 
 export default function ProfileScreen() {
@@ -104,11 +104,11 @@ export default function ProfileScreen() {
                     .filter((section) => !section.passengerOnly || isPassenger)
                     .map((section) => (
                         <ListItem
-                            key={section.title}
+                            key={section.href}
                             icon={section.icon}
                             title={section.title}
-                            description={`${section.description} · disponible pronto`}
-                            disabled
+                            description={section.description}
+                            onPress={() => router.push(section.href)}
                         />
                     ))}
             </Card>

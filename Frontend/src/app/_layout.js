@@ -15,6 +15,7 @@ import { ThemeProvider, useTheme } from "../context/ThemeContext"
 import { ToastProvider } from "../context/ToastContext"
 import { AuthProvider, useAuth } from "../context/AuthContext"
 import { FavoritesProvider } from "../context/FavoritesContext"
+import { api } from "../api/client"
 
 // La pantalla de inicio se mantiene hasta cargar las fuentes y recuperar la sesión guardada.
 SplashScreen.preventAutoHideAsync().catch(() => {})
@@ -47,12 +48,30 @@ export default function RootLayout() {
 }
 
 function AppStack() {
-    const { colors, isDark } = useTheme()
-    const { ready } = useAuth()
+    const { colors, isDark, setMode } = useTheme()
+    const { ready, user } = useAuth()
+    const userId = user?.id
 
     useEffect(() => {
         if (ready) SplashScreen.hideAsync().catch(() => {})
     }, [ready])
+
+    // Al iniciar sesión se aplica el tema guardado en la cuenta (ACC-06), aunque se haya elegido en otro teléfono.
+    useEffect(() => {
+        if (!userId) return undefined
+
+        let active = true
+
+        api.get("/users/me/preferences")
+            .then((response) => {
+                if (active && response.data?.theme) setMode(response.data.theme)
+            })
+            .catch(() => {})
+
+        return () => {
+            active = false
+        }
+    }, [userId, setMode])
 
     if (!ready) return null
 
