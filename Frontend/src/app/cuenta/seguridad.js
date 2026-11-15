@@ -1,7 +1,5 @@
 import { useState } from "react"
-import { StyleSheet, View } from "react-native"
 import { AppText } from "../../components/AppText"
-import { Badge } from "../../components/Badge"
 import { Button } from "../../components/Button"
 import { Card } from "../../components/Card"
 import { PasswordChecklist } from "../../components/PasswordChecklist"
@@ -10,14 +8,14 @@ import { Screen } from "../../components/Screen"
 import { ScreenHeader } from "../../components/ScreenHeader"
 import { Notice } from "../../components/States"
 import { TextField } from "../../components/TextField"
-import { useAuth } from "../../context/AuthContext"
+import { TwoFactorCard } from "../../components/TwoFactorCard"
 import { useToast } from "../../context/ToastContext"
 import { api } from "../../api/client"
 import { fieldErrors, isValidNewPassword, newPasswordChecks } from "../../lib/validation"
 
 const emptyForm = { currentPassword: "", newPassword: "", confirmPassword: "" }
 
-// Cambio de contraseña (ACC-04) y estado de la verificación en dos pasos.
+// Cambio de contraseña (ACC-04) y verificación en dos pasos (ACC-01).
 export default function SecurityScreen() {
     return (
         <RequireAuth title="Seguridad">
@@ -27,7 +25,6 @@ export default function SecurityScreen() {
 }
 
 function SecurityContent() {
-    const { user } = useAuth()
     const toast = useToast()
     const [form, setForm] = useState(emptyForm)
     const [errors, setErrors] = useState({})
@@ -124,33 +121,8 @@ function SecurityContent() {
                 <Button title="Actualizar contraseña" icon="checkmark-outline" onPress={submit} loading={saving} />
             </Card>
 
-            <Card>
-                <View style={styles.row}>
-                    <AppText variant="subtitle" style={styles.flex}>
-                        Verificación en dos pasos
-                    </AppText>
-                    <Badge
-                        label={user.twoFactorEnabled ? "Activada" : "Desactivada"}
-                        tone={user.twoFactorEnabled ? "success" : "neutral"}
-                    />
-                </View>
-                <AppText variant="caption" tone="muted">
-                    {user.twoFactorEnabled
-                        ? "Al iniciar sesión se te pide el código de tu aplicación autenticadora."
-                        : "Cuando esté disponible, podrás activarla con una aplicación autenticadora."}
-                </AppText>
-            </Card>
+            <TwoFactorCard />
         </Screen>
     )
 }
 
-const styles = StyleSheet.create({
-    row: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10
-    },
-    flex: {
-        flex: 1
-    }
-})

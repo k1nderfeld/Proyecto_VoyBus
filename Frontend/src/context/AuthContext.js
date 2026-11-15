@@ -49,24 +49,33 @@ export function AuthProvider({ children }) {
         [toast]
     )
 
-    const login = useCallback(async (credentials) => {
-        const response = await api.post("/auth/login", credentials, { auth: false })
-        await session.set(response.data.token)
-        setUser(response.data.user)
-        return response
+    // Guarda la sesión que devuelven el login, la verificación de la cuenta o Google.
+    const startSession = useCallback(async (sessionData) => {
+        await session.set(sessionData.token)
+        setUser(sessionData.user)
     }, [])
 
-    // El registro público solo crea pasajeros; después se inicia sesión con los mismos datos.
-    const register = useCallback(
-        async (payload) => {
-            await api.post("/auth/register", payload, { auth: false })
-
-            return login({
-                ...(payload.email ? { email: payload.email } : { phone: payload.phone }),
-                password: payload.password
-            })
+    const login = useCallback(
+        async (credentials) => {
+            const response = await api.post("/auth/login", credentials, { auth: false })
+            await startSession(response.data)
+            return response
         },
-        [login]
+        [startSession]
+    )
+
+    // El registro público solo crea pasajeros, y la cuenta queda pendiente hasta verificar
+    // el correo o el teléfono con el código que envía el backend (ACC-01).
+    const register = useCallback((payload) => api.post("/auth/register", payload, { auth: false }), [])
+
+    // Verifica el código e inicia sesión de inmediato.
+    const verifyAccount = useCallback(
+        async (payload) => {
+            const response = await api.post("/auth/verify", payload, { auth: false })
+            await startSession(response.data)
+            return response
+        },
+        [startSession]
     )
 
     const logout = useCallback(async () => {
@@ -92,11 +101,13 @@ export function AuthProvider({ children }) {
             isPassenger: user?.role === "passenger",
             login,
             register,
+            verifyAccount,
+            startSession,
             logout,
             refresh,
             updateUser: setUser
         }),
-        [user, ready, login, register, logout, refresh]
+        [user, ready, login, register, verifyAccount, startSession, logout, refresh]
     )
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
