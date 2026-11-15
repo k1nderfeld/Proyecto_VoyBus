@@ -10,6 +10,7 @@ module.exports = {
     FavoriteStop: require("./favoriteStop"),
     Route: require("./route"),
     RouteStop: require("./routeStop"),
+    RouteSchedule: require("./routeSchedule"),
     Vehicle: require("./vehicle"),
     Trip: require("./trip"),
     TripLink: require("./tripLink"),

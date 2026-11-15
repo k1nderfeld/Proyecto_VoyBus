@@ -1,13 +1,12 @@
 const { Op } = require("sequelize")
 const { TripLink, Trip, Route, Line, Vehicle, StopRequest, Stop } = require("../models")
 const HttpError = require("../utils/HttpError")
+const { directionLabels } = require("../config/network")
+const { paginationOffset, buildPagination } = require("../utils/pagination")
 
 // Textos que ve el pasajero. Ninguno afirma que el vehículo se detuvo o que el pasajero bajó (ACC-07, VIA-03).
 const labels = {
-    direction: {
-        outbound: "Ida",
-        inbound: "Regreso"
-    },
+    direction: directionLabels,
     linkEndReason: {
         unlinked: "Te desvinculaste del vehículo",
         trip_ended: "El viaje del vehículo finalizó"
@@ -74,19 +73,14 @@ class HistoryService {
             include: [tripInclude(lineId)],
             order: [["linkedAt", "DESC"], ["id", "DESC"]],
             limit,
-            offset: (page - 1) * limit
+            offset: paginationOffset({ page, limit })
         })
 
         const latestRequests = await this.findLatestRequests(rows.map((link) => link.id))
 
         return {
             items: rows.map((link) => this.formatSummary(link, latestRequests.get(link.id))),
-            pagination: {
-                page,
-                limit,
-                total: count,
-                totalPages: Math.ceil(count / limit)
-            },
+            pagination: buildPagination({ page, limit }, count),
             notice: HISTORY_NOTICE
         }
     }

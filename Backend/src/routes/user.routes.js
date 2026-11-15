@@ -1,5 +1,5 @@
 const { Router } = require("express")
-const { body, param, query } = require("express-validator")
+const { body, param } = require("express-validator")
 const { getPreferenceOptions, getPreferences, updatePreferences } = require("../controllers/preferences.controller")
 const {
     getProfile,
@@ -16,6 +16,7 @@ const validateFields = require("../middlewares/validateFields")
 const authenticate = require("../middlewares/authenticate")
 const authorize = require("../middlewares/authorize")
 const uploadAvatar = require("../middlewares/uploadAvatar")
+const { singleQueryParam, paginationRules } = require("../utils/queryRules")
 const { preferenceGroups, preferenceDefinitions, preferencePath } = require("../config/preferences")
 
 const router = Router()
@@ -197,19 +198,11 @@ const isCalendarDate = (value) => {
     return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value)
 }
 
-// Los parámetros vacíos se ignoran; los repetidos (?page=1&page=2) se rechazan.
-const historyQuery = (field) =>
-    query(field)
-        .optional({ values: "falsy" })
-        .custom((value) => typeof value === "string")
-        .withMessage(`El parámetro "${field}" solo puede indicarse una vez.`)
-        .bail()
-
 const historyQueryRules = [
-    historyQuery("from")
+    singleQueryParam("from")
         .custom(isCalendarDate).withMessage("La fecha inicial debe tener el formato AAAA-MM-DD."),
 
-    historyQuery("to")
+    singleQueryParam("to")
         .custom(isCalendarDate).withMessage("La fecha final debe tener el formato AAAA-MM-DD.")
         .bail()
         .custom((to, { req }) => {
@@ -218,15 +211,10 @@ const historyQueryRules = [
         })
         .withMessage("La fecha final no puede ser anterior a la fecha inicial."),
 
-    historyQuery("lineId")
+    singleQueryParam("lineId")
         .isInt({ min: 1 }).withMessage("La línea indicada no es válida."),
 
-    historyQuery("page")
-        .isInt({ min: 1 }).withMessage("La página debe ser un número mayor o igual a 1."),
-
-    historyQuery("limit")
-        .isInt({ min: 1, max: MAX_HISTORY_LIMIT })
-        .withMessage(`La cantidad por página debe estar entre 1 y ${MAX_HISTORY_LIMIT}.`)
+    ...paginationRules(MAX_HISTORY_LIMIT)
 ]
 
 const historyIdRule = [
