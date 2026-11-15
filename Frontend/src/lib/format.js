@@ -16,7 +16,27 @@ const timeFormatter = new Intl.DateTimeFormat("es-CL", {
     hour12: false
 })
 
-const relativeFormatter = new Intl.RelativeTimeFormat("es-CL", { numeric: "auto" })
+// Hermes (el motor de React Native) no siempre incluye Intl.RelativeTimeFormat: si falta, se arma el texto a mano.
+const relativeUnits = {
+    minute: ["minuto", "minutos"],
+    hour: ["hora", "horas"],
+    day: ["día", "días"]
+}
+
+const manualRelative = (value, unit) => {
+    if (unit === "day" && value === 0) return "hoy"
+    if (unit === "day" && value === -1) return "ayer"
+    if (unit === "day" && value === 1) return "mañana"
+    if (value === 0) return "ahora"
+
+    const amount = Math.abs(value)
+    const word = relativeUnits[unit][amount === 1 ? 0 : 1]
+    return value < 0 ? `hace ${amount} ${word}` : `en ${amount} ${word}`
+}
+
+const relativeFormatter = typeof Intl.RelativeTimeFormat === "function"
+    ? new Intl.RelativeTimeFormat("es-CL", { numeric: "auto" })
+    : { format: manualRelative }
 
 const capitalize = (value) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : "")
 
@@ -67,9 +87,6 @@ export const formatDuration = (from, to) => {
     const rest = minutes % 60
     return rest ? `${hours} h ${rest} min` : `${hours} h`
 }
-
-export const formatPrice = (value) =>
-    new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(value)
 
 export const initials = (name) => {
     if (!name) return "VB"
