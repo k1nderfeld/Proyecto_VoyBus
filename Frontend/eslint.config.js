@@ -6,5 +6,18 @@ module.exports = defineConfig([
     expoConfig,
     {
         ignores: ["dist/*", ".expo/*"]
+    },
+    {
+        // Scripts que corren con Node (fuera de la app).
+        files: ["scripts/**/*.js", "*.config.js"],
+        languageOptions: {
+            globals: {
+                __dirname: "readonly",
+                require: "readonly",
+                module: "writable",
+                process: "readonly",
+                console: "readonly"
+            }
+        }
     }
 ])
