@@ -15,7 +15,8 @@ class Server {
         this.paths = {
             auth: "/api/auth",
             users: "/api/users",
-            lines: "/api/lines"
+            lines: "/api/lines",
+            stops: "/api/stops"
         }
 
         this.middlewares()
@@ -33,6 +34,7 @@ class Server {
         this.app.use(this.paths.auth, require("./routes/auth.routes"))
         this.app.use(this.paths.users, require("./routes/user.routes"))
         this.app.use(this.paths.lines, require("./routes/lines.routes"))
+        this.app.use(this.paths.stops, require("./routes/stops.routes"))
     }
 
     async connectDatabase() {

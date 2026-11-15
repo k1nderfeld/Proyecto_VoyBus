@@ -1,7 +1,8 @@
 const { Line, Stop, Route, RouteStop, RouteSchedule } = require("../models")
 
 // Catálogo inicial de la red (RED-01: al menos 3 líneas, RED-02: al menos 10 paraderos).
-// Coordenadas de referencia en Antofagasta. La línea 104 está desactivada: no debe aparecer en las consultas.
+// Coordenadas de referencia en Antofagasta. La línea 104 y el paradero PA011 están desactivados:
+// no deben aparecer en las consultas.
 const lines = [
     { code: "101", name: "Centro - Universidad", color: "#1E88E5", status: "active" },
     { code: "102", name: "Costanera - La Portada", color: "#43A047", status: "active" },
@@ -19,7 +20,9 @@ const stops = [
     { code: "PA007", name: "Parque Brasil", latitude: -23.6590, longitude: -70.4020 },
     { code: "PA008", name: "Mall Plaza", latitude: -23.6300, longitude: -70.3955 },
     { code: "PA009", name: "Avenida Argentina", latitude: -23.6420, longitude: -70.3890 },
-    { code: "PA010", name: "La Portada", latitude: -23.5000, longitude: -70.4250 }
+    { code: "PA010", name: "La Portada", latitude: -23.5000, longitude: -70.4250 },
+    // Desactivado: no debe aparecer en las consultas de paraderos.
+    { code: "PA011", name: "Ex Estación Antofagasta", latitude: -23.6520, longitude: -70.3975, status: "inactive" }
 ]
 
 const WEEKDAYS = "1,2,3,4,5"

@@ -1,16 +1,10 @@
 const { Op } = require("sequelize")
 const { Line, Route, RouteStop, RouteSchedule, Stop } = require("../models")
 const HttpError = require("../utils/HttpError")
-const { directionLabels, lineStatusLabels, lineStatusNotices, formatDays } = require("../config/network")
+const { formatLine, formatRoute, formatStopSummary, formatSchedules } = require("../utils/networkFormat")
+const { visibleLineWhere, byDirection } = require("../utils/networkQueries")
 const { normalizeSearchText, searchTextContains } = require("../utils/search")
 const { paginationOffset, buildPagination } = require("../utils/pagination")
-
-// Las líneas desactivadas no se muestran; las suspendidas sí, con su aviso (RED-01).
-const visibleLineWhere = { status: { [Op.ne]: "inactive" } }
-
-// La ida se muestra antes que el regreso.
-const byDirection = (a, b) =>
-    Route.DIRECTIONS.indexOf(a.direction) - Route.DIRECTIONS.indexOf(b.direction) || a.id - b.id
 
 class LinesService {
     async listLines({ search, page, limit }) {
@@ -38,7 +32,7 @@ class LinesService {
                 const [mainRoute] = routesByLine.get(line.id) || []
 
                 return {
-                    ...this.formatLine(line),
+                    ...formatLine(line),
                     ...this.endpointsOf(mainRoute, endpoints)
                 }
             }),
@@ -59,12 +53,12 @@ class LinesService {
         const endpoints = await this.findRouteEndpoints(routes.map((route) => route.id))
 
         return {
-            ...this.formatLine(line),
+            ...formatLine(line),
             ...this.endpointsOf(routes[0], endpoints),
             routes: routes.map((route) => ({
-                ...this.formatRoute(route),
+                ...formatRoute(route),
                 ...this.endpointsOf(route, endpoints),
-                schedules: this.formatSchedules(route.schedules)
+                schedules: formatSchedules(route.schedules)
             }))
         }
     }
@@ -85,12 +79,12 @@ class LinesService {
         const routeStops = stops.map((routeStop) => routeStop.stop)
 
         return {
-            line: this.formatLine(line),
+            line: formatLine(line),
             route: {
-                ...this.formatRoute(route),
-                origin: routeStops.length ? this.formatEndpoint(routeStops[0]) : null,
-                destination: routeStops.length ? this.formatEndpoint(routeStops[routeStops.length - 1]) : null,
-                schedules: this.formatSchedules(route.schedules)
+                ...formatRoute(route),
+                origin: routeStops.length ? formatStopSummary(routeStops[0]) : null,
+                destination: routeStops.length ? formatStopSummary(routeStops[routeStops.length - 1]) : null,
+                schedules: formatSchedules(route.schedules)
             },
             stops: routeStops.map((stop, index) => ({
                 order: index + 1,
@@ -161,49 +155,9 @@ class LinesService {
         const routeEndpoints = route && endpoints.get(route.id)
 
         return {
-            origin: routeEndpoints ? this.formatEndpoint(routeEndpoints.origin) : null,
-            destination: routeEndpoints ? this.formatEndpoint(routeEndpoints.destination) : null
+            origin: routeEndpoints ? formatStopSummary(routeEndpoints.origin) : null,
+            destination: routeEndpoints ? formatStopSummary(routeEndpoints.destination) : null
         }
-    }
-
-    formatLine(line) {
-        return {
-            id: line.id,
-            code: line.code,
-            name: line.name,
-            color: line.color,
-            status: line.status,
-            statusLabel: lineStatusLabels[line.status],
-            notice: lineStatusNotices[line.status] ?? null
-        }
-    }
-
-    formatRoute(route) {
-        return {
-            id: route.id,
-            name: route.name,
-            direction: route.direction,
-            directionLabel: directionLabels[route.direction]
-        }
-    }
-
-    formatEndpoint(stop) {
-        return {
-            id: stop.id,
-            code: stop.code,
-            name: stop.name
-        }
-    }
-
-    formatSchedules(schedules = []) {
-        return [...schedules]
-            .sort((a, b) => a.dayList[0] - b.dayList[0] || a.startTime.localeCompare(b.startTime))
-            .map((schedule) => ({
-                days: schedule.dayList,
-                daysLabel: formatDays(schedule.dayList),
-                startTime: schedule.startTime,
-                endTime: schedule.endTime
-            }))
     }
 }
 
