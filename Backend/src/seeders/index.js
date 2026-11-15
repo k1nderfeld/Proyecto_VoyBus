@@ -4,19 +4,15 @@ require("dotenv").config({ quiet: true })
 
 const db = require("../config/database")
 const syncDatabase = require("../utils/syncDatabase")
-require("../models/user")
-require("../models/session")
-require("../models/userPreference")
-require("../models/line")
-require("../models/stop")
-require("../models/favoriteLine")
-require("../models/favoriteStop")
+require("../models")
 const seedNetwork = require("./network.seed")
+const seedHistory = require("./history.seed")
 
 const run = async () => {
     await db.authenticate()
     await syncDatabase(db)
     await seedNetwork()
+    await seedHistory()
     await db.close()
 }
 
