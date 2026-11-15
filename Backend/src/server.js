@@ -6,13 +6,7 @@ require("dotenv").config({ quiet: true })
 const db = require("./config/database")
 const uploadsConfig = require("./config/uploads")
 const syncDatabase = require("./utils/syncDatabase")
-const User = require("./models/user")
-const Session = require("./models/session")
-const UserPreference = require("./models/userPreference")
-const Line = require("./models/line")
-const Stop = require("./models/stop")
-const FavoriteLine = require("./models/favoriteLine")
-const FavoriteStop = require("./models/favoriteStop")
+require("./models")
 
 class Server {
     constructor() {
