@@ -67,6 +67,8 @@ export default function ProfileScreen() {
         await logout()
         setLeaving(false)
         toast.success("Cerraste tu sesión.")
+        // ACC-03: se vuelve a la pantalla de acceso. replace evita volver con "atrás" a la sesión cerrada.
+        router.replace("/login")
     }
 
     const photo = assetUrl(user.photoUrl)
