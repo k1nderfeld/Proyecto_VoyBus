@@ -37,6 +37,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#111A5C"
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "VoyBus usa tu ubicación solo para centrar el mapa y mostrarte los paraderos cercanos."
+        }
       ]
     ],
     "experiments": {
