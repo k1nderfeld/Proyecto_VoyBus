@@ -8,6 +8,7 @@ import { Segmented } from "../../components/Segmented"
 import { Notice } from "../../components/States"
 import { TextField } from "../../components/TextField"
 import { useAuth } from "../../context/AuthContext"
+import { api } from "../../api/client"
 import { useToast } from "../../context/ToastContext"
 import { safeNext } from "../../lib/navigation"
 import { fieldErrors } from "../../lib/validation"
@@ -33,6 +34,8 @@ export default function LoginScreen() {
     const [errors, setErrors] = useState({})
     const [serverError, setServerError] = useState(null)
     const [sending, setSending] = useState(false)
+    // Cuenta creada pero sin verificar (ACC-02): se ofrece verificarla en vez de mostrar solo el error.
+    const [pending, setPending] = useState(null)
 
     if (user) return <Redirect href={next} />
 
@@ -70,6 +73,7 @@ export default function LoginScreen() {
         setSending(true)
         setErrors({})
         setServerError(null)
+        setPending(null)
 
         try {
             await login({
@@ -86,12 +90,30 @@ export default function LoginScreen() {
             if (requestError.data?.requiresTwoFactor) {
                 setTwoFactor(true)
                 toast.info("Ingresa el código de tu aplicación autenticadora para continuar.")
+            } else if (requestError.data?.requiresVerification) {
+                setPending({ mode, identifier, channel: requestError.data.channel })
             } else {
                 setServerError(requestError.message)
             }
         } finally {
             setSending(false)
         }
+    }
+
+    // Pide un código nuevo y abre la pantalla de verificación.
+    const startVerification = async () => {
+        const contact = pending.mode === "email" ? { email: pending.identifier } : { phone: pending.identifier }
+        let sent = "1"
+
+        try {
+            await api.post("/auth/verify/resend", contact, { auth: false })
+        } catch {
+            // Si hay que esperar para reenviar, el código anterior sigue vigente: igual se abre la pantalla.
+            sent = "0"
+        }
+
+        const key = pending.mode === "email" ? "email" : "phone"
+        router.push(`/verificar?${key}=${encodeURIComponent(pending.identifier)}&sent=${sent}&next=${encodeURIComponent(next)}`)
     }
 
     return (
@@ -115,6 +137,17 @@ export default function LoginScreen() {
             <Segmented options={modes} value={mode} onChange={changeMode} accessibilityLabel="Medio de acceso" />
 
             {serverError && <Notice tone="danger">{serverError}</Notice>}
+
+            {pending && (
+                <Notice tone="warning" title="Tu cuenta aún no está verificada">
+                    <AppText variant="caption" tone="soft">
+                        Para entrar, confirma tu {pending.channel === "phone" ? "teléfono con el código que te enviaremos por SMS" : "correo con el código que te enviaremos"}.
+                    </AppText>
+                    <View style={styles.pendingAction}>
+                        <Button title="Verificar ahora" size="sm" icon="checkmark-circle-outline" onPress={startVerification} />
+                    </View>
+                </Notice>
+            )}
 
             <TextField
                 label={mode === "email" ? "Correo electrónico" : "Teléfono"}
@@ -205,5 +238,9 @@ const styles = StyleSheet.create({
     },
     demoText: {
         flex: 1
+    },
+    pendingAction: {
+        marginTop: 8,
+        alignItems: "flex-start"
     }
 })

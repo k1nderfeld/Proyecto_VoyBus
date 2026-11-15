@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { StyleSheet, View } from "react-native"
-import { Link, Redirect, useLocalSearchParams } from "expo-router"
+import { Link, Redirect, router, useLocalSearchParams } from "expo-router"
 import { AppText } from "../../components/AppText"
 import { AuthLayout } from "../../components/AuthLayout"
 import { Button } from "../../components/Button"
@@ -68,15 +68,21 @@ export default function RegisterScreen() {
         setErrors({})
 
         try {
-            await register({
+            const response = await register({
                 name,
                 ...(mode === "email" ? { email: identifier } : { phone: identifier }),
                 password: form.password,
                 confirmPassword: form.confirmPassword,
                 acceptTerms: true
             })
-            // Al quedar la sesión iniciada, <Redirect> lleva a la pantalla pedida.
-            toast.success("Tu cuenta fue creada correctamente.")
+            toast.success(response.message)
+
+            // La cuenta queda pendiente: se verifica con el código enviado al correo o por SMS (ACC-01).
+            const contact = response.data.user.email
+                ? `email=${encodeURIComponent(response.data.user.email)}`
+                : `phone=${encodeURIComponent(response.data.user.phone)}`
+            const sent = response.data.verification.codeSent ? "1" : "0"
+            router.replace(`/verificar?${contact}&sent=${sent}&next=${encodeURIComponent(next)}`)
         } catch (requestError) {
             const fields = fieldErrors(requestError)
             setErrors({ ...fields, identifier: fields.email || fields.phone })

@@ -1,6 +1,17 @@
 const { Router } = require("express")
 const { body } = require("express-validator")
-const { register, login, logout, forgotPassword, resetPassword, changePassword } = require("../controllers/auth.controller")
+const {
+    register,
+    verify,
+    resendVerification,
+    googleLogin,
+    login,
+    logout,
+    forgotPassword,
+    resetPassword,
+    changePassword
+} = require("../controllers/auth.controller")
+const { setupTwoFactor, enableTwoFactor, disableTwoFactor } = require("../controllers/twoFactor.controller")
 const validateFields = require("../middlewares/validateFields")
 const authenticate = require("../middlewares/authenticate")
 
@@ -91,6 +102,89 @@ router.post(
 )
 
 router.post("/logout", authenticate, logout)
+
+/* --------------------- Verificación del medio de contacto (ACC-01) --------------------- */
+
+// Correo o teléfono de la cuenta, con el mismo formato que en el registro.
+const contactRules = [
+    body("email")
+        .custom((value, { req }) => Boolean(value || req.body.phone))
+        .withMessage("Debes indicar un correo electrónico o un teléfono.")
+        .optional({ values: "falsy" })
+        .isString().withMessage("El correo electrónico debe ser texto.")
+        .trim()
+        .isEmail().withMessage("El correo electrónico no es válido.")
+        .normalizeEmail(),
+
+    body("phone")
+        .optional({ values: "falsy" })
+        .isString().withMessage("El teléfono debe ser texto.")
+        .trim()
+        .matches(/^\+?[1-9]\d{7,14}$/).withMessage("El teléfono debe incluir entre 8 y 15 dígitos y puede iniciar con +.")
+]
+
+const sixDigitCode = (field, message) =>
+    body(field)
+        .isString().withMessage(message)
+        .trim()
+        .matches(/^\d{6}$/).withMessage(message)
+
+router.post(
+    "/verify",
+    [...contactRules, sixDigitCode("code", "El código debe tener 6 dígitos.")],
+    validateFields,
+    verify
+)
+
+router.post("/verify/resend", contactRules, validateFields, resendVerification)
+
+/* ------------------------------ Google (ACC-01, ACC-02) ------------------------------ */
+
+router.post(
+    "/google",
+    [
+        body("idToken")
+            .isString().withMessage("Falta el token de Google.")
+            .notEmpty().withMessage("Falta el token de Google."),
+
+        body("acceptTerms")
+            .optional()
+            .isBoolean({ strict: true }).withMessage("acceptTerms debe ser true o false."),
+
+        body("twoFactorCode")
+            .optional({ values: "falsy" })
+            .isString().withMessage("El código de verificación debe ser texto.")
+            .trim()
+            .matches(/^\d{6}$/).withMessage("El código de verificación debe tener 6 dígitos.")
+    ],
+    validateFields,
+    googleLogin
+)
+
+/* ------------------------- Verificación en dos pasos (ACC-01) ------------------------- */
+
+router.post("/2fa/setup", authenticate, setupTwoFactor)
+
+router.post(
+    "/2fa/enable",
+    authenticate,
+    [sixDigitCode("code", "El código debe tener 6 dígitos.")],
+    validateFields,
+    enableTwoFactor
+)
+
+router.post(
+    "/2fa/disable",
+    authenticate,
+    [
+        body("currentPassword")
+            .isString().withMessage("La contraseña actual debe ser texto.")
+            .notEmpty().withMessage("La contraseña actual es obligatoria."),
+        sixDigitCode("code", "El código debe tener 6 dígitos.")
+    ],
+    validateFields,
+    disableTwoFactor
+)
 
 router.post(
     "/forgot-password",
