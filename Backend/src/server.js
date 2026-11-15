@@ -14,7 +14,8 @@ class Server {
         this.port = process.env.PORT || 3000
         this.paths = {
             auth: "/api/auth",
-            users: "/api/users"
+            users: "/api/users",
+            lines: "/api/lines"
         }
 
         this.middlewares()
@@ -31,6 +32,7 @@ class Server {
     routes() {
         this.app.use(this.paths.auth, require("./routes/auth.routes"))
         this.app.use(this.paths.users, require("./routes/user.routes"))
+        this.app.use(this.paths.lines, require("./routes/lines.routes"))
     }
 
     async connectDatabase() {

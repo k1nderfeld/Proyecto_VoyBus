@@ -1,9 +1,23 @@
-const { DataTypes, Model } = require("sequelize")
+const { DataTypes, Model, Op } = require("sequelize")
 const db = require("../config/database")
+const { normalizeSearchText } = require("../utils/search")
 
 // Modelo base de línea (módulo Red de transporte). Las líneas no se eliminan:
 // se desactivan con "status" para conservar favoritos e historial asociados.
-class Line extends Model {}
+class Line extends Model {
+    static buildSearchText(line) {
+        return normalizeSearchText(`${line.code} ${line.name}`)
+    }
+
+    // Lo llama syncDatabase: completa "searchText" en las filas creadas antes de que existiera la columna.
+    static async afterSchemaSync() {
+        const lines = await Line.findAll({ where: { searchText: { [Op.is]: null } } })
+
+        for (const line of lines) {
+            await line.update({ searchText: Line.buildSearchText(line) })
+        }
+    }
+}
 
 Line.STATUSES = ["active", "suspended", "inactive"]
 
@@ -40,12 +54,23 @@ Line.init({
         validate: {
             isIn: [Line.STATUSES]
         }
+    },
+
+    // Código y nombre normalizados para la búsqueda (RED-01). Se calcula al guardar.
+    searchText: {
+        type: DataTypes.STRING(120),
+        allowNull: true
     }
 }, {
     sequelize: db,
     modelName: "Line",
     tableName: "lines",
-    timestamps: true
+    timestamps: true,
+    hooks: {
+        beforeSave: (line) => {
+            line.searchText = Line.buildSearchText(line)
+        }
+    }
 })
 
 module.exports = Line

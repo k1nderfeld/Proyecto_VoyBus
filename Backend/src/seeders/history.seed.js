@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs")
 const db = require("../config/database")
-const { User, Line, Stop, Route, RouteStop, Vehicle, Trip, TripLink, StopRequest } = require("../models")
+const { User, Line, Stop, Route, Vehicle, Trip, TripLink, StopRequest } = require("../models")
 
 // Cuentas demo (RNF-04). La contraseña se puede cambiar con SEED_DEMO_PASSWORD.
 const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD || "Demo123!"
@@ -8,13 +8,6 @@ const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD || "Demo123!"
 const demoUsers = [
     { key: "passenger", name: "Pasajero Demo", email: "pasajero@voybus.cl", role: "passenger" },
     { key: "driver", name: "Conductor Demo", email: "conductor@voybus.cl", role: "driver" }
-]
-
-// Paraderos de cada recorrido de ida, en orden. El regreso recorre los mismos en sentido inverso.
-const routes = [
-    { line: "101", outbound: "Plaza Colón - Universidad", inbound: "Universidad - Plaza Colón", stops: ["PA001", "PA002", "PA004", "PA007", "PA006", "PA005"] },
-    { line: "102", outbound: "Mercado - La Portada", inbound: "La Portada - Mercado", stops: ["PA002", "PA001", "PA009", "PA003", "PA008", "PA010"] },
-    { line: "103", outbound: "Plaza Colón - Terminal", inbound: "Terminal - Plaza Colón", stops: ["PA001", "PA009", "PA003"] }
 ]
 
 const vehicles = [
@@ -63,33 +56,10 @@ const seedUsers = async () => {
     return users
 }
 
-const seedRoutes = async () => {
-    const routesByKey = {}
-
-    for (const definition of routes) {
-        const line = await Line.findOne({ where: { code: definition.line } })
-
-        for (const direction of ["outbound", "inbound"]) {
-            const [route] = await Route.findOrCreate({
-                where: { lineId: line.id, direction },
-                defaults: { name: definition[direction] }
-            })
-
-            const stopCodes = direction === "outbound" ? definition.stops : [...definition.stops].reverse()
-
-            for (const [index, code] of stopCodes.entries()) {
-                const stop = await Stop.findOne({ where: { code } })
-                await RouteStop.findOrCreate({
-                    where: { routeId: route.id, position: index + 1 },
-                    defaults: { stopId: stop.id }
-                })
-            }
-
-            routesByKey[`${definition.line}-${direction}`] = route
-        }
-    }
-
-    return routesByKey
+// Los recorridos los crea network.seed.js; aquí solo se buscan por "línea-sentido" (por ejemplo "101-outbound").
+const findRoutes = async () => {
+    const routes = await Route.findAll({ include: [{ model: Line, as: "line" }] })
+    return Object.fromEntries(routes.map((route) => [`${route.line.code}-${route.direction}`, route]))
 }
 
 const seedVehicles = async () => {
@@ -171,7 +141,7 @@ const seedPassengerTrips = async ({ passenger, driver }, routesByKey, vehiclesBy
 
 const seedHistory = async () => {
     const users = await seedUsers()
-    const routesByKey = await seedRoutes()
+    const routesByKey = await findRoutes()
     const vehiclesByCode = await seedVehicles()
 
     // Solo se cargan viajes la primera vez, para no duplicar el historial al repetir el seed.
@@ -182,7 +152,7 @@ const seedHistory = async () => {
     }
 
     console.log(
-        `Viajes: ${routes.length * 2} recorridos, ${vehicles.length} vehículos y ` +
+        `Viajes: ${vehicles.length} vehículos y ` +
         `${existingLinks ? "historial demo ya existente" : `${pastTrips.length} viajes de historial creados`}.`
     )
     console.log(`Cuentas demo: ${demoUsers.map((user) => user.email).join(", ")}.`)

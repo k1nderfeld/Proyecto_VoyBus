@@ -1,17 +1,17 @@
 const historyService = require("../services/history.services")
 const respondWithError = require("../utils/respondWithError")
+const { parsePagination } = require("../utils/pagination")
 
 const DEFAULT_LIMIT = 10
 
 const listHistory = async (req, res) => {
     try {
-        const { from, to, lineId, page, limit } = req.query
+        const { from, to, lineId } = req.query
         const history = await historyService.listHistory(req.auth.userId, {
             from,
             to,
             lineId: lineId ? Number(lineId) : null,
-            page: page ? Number(page) : 1,
-            limit: limit ? Number(limit) : DEFAULT_LIMIT
+            ...parsePagination(req.query, DEFAULT_LIMIT)
         })
 
         return res.json({
