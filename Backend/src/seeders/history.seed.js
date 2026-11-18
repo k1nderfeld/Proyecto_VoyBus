@@ -1,14 +1,8 @@
 const bcrypt = require("bcryptjs")
 const db = require("../config/database")
 const { User, Line, Stop, Route, Vehicle, Trip, TripLink, StopRequest } = require("../models")
-
-// Cuentas demo (RNF-04). La contraseña se puede cambiar con SEED_DEMO_PASSWORD.
-const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD || "Demo123!"
-
-const demoUsers = [
-    { key: "passenger", name: "Pasajero Demo", email: "pasajero@voybus.cl", role: "passenger" },
-    { key: "driver", name: "Conductor Demo", email: "conductor@voybus.cl", role: "driver" }
-]
+// Cuentas demo (RNF-04): definidas en config/demo.js. La contraseña se cambia con SEED_DEMO_PASSWORD.
+const { demoAccounts, demoPassword } = require("../config/demo")
 
 const vehicles = [
     { code: "BUS001", plate: "ABCD12" },
@@ -42,13 +36,13 @@ const at = (daysAgo, hour, minutes = 0) => {
 const addMinutes = (date, minutes) => new Date(date.getTime() + minutes * 60000)
 
 const seedUsers = async () => {
-    const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12)
+    const passwordHash = await bcrypt.hash(demoPassword(), 12)
     const users = {}
 
-    for (const { key, ...data } of demoUsers) {
+    for (const { key, name, email, role } of demoAccounts) {
         const [user] = await User.findOrCreate({
-            where: { email: data.email },
-            defaults: { ...data, password: passwordHash, acceptedTermsAt: new Date() }
+            where: { email },
+            defaults: { name, email, role, password: passwordHash, acceptedTermsAt: new Date() }
         })
         users[key] = user
     }
@@ -155,7 +149,7 @@ const seedHistory = async () => {
         `Viajes: ${vehicles.length} vehículos y ` +
         `${existingLinks ? "historial demo ya existente" : `${pastTrips.length} viajes de historial creados`}.`
     )
-    console.log(`Cuentas demo: ${demoUsers.map((user) => user.email).join(", ")}.`)
+    console.log(`Cuentas demo: ${demoAccounts.map((account) => account.email).join(", ")}.`)
 }
 
 module.exports = seedHistory

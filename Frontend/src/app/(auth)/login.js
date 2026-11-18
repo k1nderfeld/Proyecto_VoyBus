@@ -10,11 +10,19 @@ import { TextField } from "../../components/TextField"
 import { useAuth } from "../../context/AuthContext"
 import { api } from "../../api/client"
 import { useToast } from "../../context/ToastContext"
+import { useApiData } from "../../hooks/useApiData"
 import { safeNext } from "../../lib/navigation"
 import { fieldErrors } from "../../lib/validation"
 
-// Cuenta demo creada por "npm run seed" en el backend. Solo se ofrece en modo desarrollo.
-const demoCredentials = { email: "pasajero@voybus.cl", password: "Demo123!" }
+// Cuentas demo creadas por "npm run seed". Solo en modo desarrollo: el backend las entrega con la contraseña
+// de su .env (SEED_DEMO_PASSWORD), así la app nunca queda con una clave distinta a la del seed.
+const loadDemoAccounts = ({ signal }) =>
+    __DEV__
+        ? api
+              .get("/auth/demo-accounts", { signal, auth: false })
+              .then((response) => response.data.accounts)
+              .catch(() => [])
+        : Promise.resolve([])
 
 const modes = [
     { value: "email", label: "Correo", icon: "mail-outline" },
@@ -36,6 +44,8 @@ export default function LoginScreen() {
     const [sending, setSending] = useState(false)
     // Cuenta creada pero sin verificar (ACC-02): se ofrece verificarla en vez de mostrar solo el error.
     const [pending, setPending] = useState(null)
+    const demo = useApiData(loadDemoAccounts, [])
+    const demoAccounts = demo.data ?? []
 
     if (user) return <Redirect href={next} />
 
@@ -47,12 +57,13 @@ export default function LoginScreen() {
         setServerError(null)
     }
 
-    const fillDemo = () => {
+    const fillDemo = (account) => {
         setMode("email")
         setTwoFactor(false)
         setErrors({})
         setServerError(null)
-        setForm({ identifier: demoCredentials.email, password: demoCredentials.password, twoFactorCode: "" })
+        setPending(null)
+        setForm({ identifier: account.email, password: account.password, twoFactorCode: "" })
     }
 
     const submit = async () => {
@@ -206,14 +217,27 @@ export default function LoginScreen() {
 
             <Button title="Ingresar" icon="log-in-outline" onPress={submit} loading={sending} />
 
-            {__DEV__ && (
-                <Notice tone="info" title="Cuenta demo (solo en desarrollo)">
-                    <View style={styles.demo}>
-                        <AppText variant="caption" tone="soft" style={styles.demoText}>
-                            {demoCredentials.email}
-                        </AppText>
-                        <Button title="Usar" size="sm" variant="secondary" onPress={fillDemo} />
-                    </View>
+            {demoAccounts.length > 0 && (
+                <Notice tone="info" title="Cuentas demo (solo en desarrollo)">
+                    {demoAccounts.map((account) => (
+                        <View key={account.key} style={styles.demo}>
+                            <View style={styles.demoText}>
+                                <AppText variant="caption" weight="semibold">
+                                    {account.label}
+                                </AppText>
+                                <AppText variant="caption" tone="soft">
+                                    {account.email}
+                                </AppText>
+                            </View>
+                            <Button
+                                title="Usar"
+                                size="sm"
+                                variant="secondary"
+                                onPress={() => fillDemo(account)}
+                                accessibilityLabel={`Usar la cuenta demo de ${account.label.toLowerCase()}`}
+                            />
+                        </View>
+                    ))}
                 </Notice>
             )}
         </AuthLayout>
