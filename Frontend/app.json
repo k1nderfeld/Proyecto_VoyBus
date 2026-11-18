@@ -7,6 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F6F6FD",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "cl.voybus.app"

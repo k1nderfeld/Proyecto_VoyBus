@@ -1,7 +1,8 @@
-import { useEffect } from "react"
-import { Stack } from "expo-router"
+import { useEffect, useMemo } from "react"
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvider } from "expo-router"
 import { StatusBar } from "expo-status-bar"
 import * as SplashScreen from "expo-splash-screen"
+import * as SystemUI from "expo-system-ui"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import {
     useFonts,
@@ -73,10 +74,34 @@ function AppStack() {
         }
     }, [userId, setMode])
 
+    // La ventana nativa del teléfono queda con el fondo de la app. Si no, durante una transición
+    // o mientras carga una pantalla se ve su color por defecto (blanco), como un destello.
+    useEffect(() => {
+        SystemUI.setBackgroundColorAsync(colors.background).catch(() => {})
+    }, [colors.background])
+
+    // La navegación usa su propio tema; si no se le pasan los colores de la app, usa fondos claros por defecto.
+    const navigationTheme = useMemo(() => {
+        const base = isDark ? DarkTheme : DefaultTheme
+
+        return {
+            ...base,
+            colors: {
+                ...base.colors,
+                primary: colors.primary,
+                background: colors.background,
+                card: colors.surface,
+                text: colors.text,
+                border: colors.border,
+                notification: colors.danger
+            }
+        }
+    }, [isDark, colors])
+
     if (!ready) return null
 
     return (
-        <>
+        <NavigationThemeProvider value={navigationTheme}>
             <StatusBar style={isDark ? "light" : "dark"} />
             <Stack
                 screenOptions={{
@@ -85,6 +110,6 @@ function AppStack() {
                     animation: "slide_from_right"
                 }}
             />
-        </>
+        </NavigationThemeProvider>
     )
 }
