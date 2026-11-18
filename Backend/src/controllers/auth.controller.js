@@ -130,7 +130,23 @@ const googleLogin = async (req, res) => {
     }
 }
 
+// Solo en desarrollo: cuentas demo con su contraseña, para el botón "Usar" del login de la app.
+const demoAccounts = async (req, res) => {
+    try {
+        const accounts = await authService.listDemoAccounts()
+
+        return res.json({
+            success: true,
+            message: accounts.length ? "Cuentas demo disponibles." : "No hay cuentas demo disponibles. Ejecuta npm run seed.",
+            data: { accounts }
+        })
+    } catch (error) {
+        return respondWithError(res, error, "No se pudieron obtener las cuentas demo.")
+    }
+}
+
 module.exports = {
+    demoAccounts,
     register,
     verify,
     resendVerification,

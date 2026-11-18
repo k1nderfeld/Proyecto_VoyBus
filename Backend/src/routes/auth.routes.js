@@ -1,6 +1,7 @@
 const { Router } = require("express")
 const { body } = require("express-validator")
 const {
+    demoAccounts,
     register,
     verify,
     resendVerification,
@@ -14,6 +15,7 @@ const {
 const { setupTwoFactor, enableTwoFactor, disableTwoFactor } = require("../controllers/twoFactor.controller")
 const validateFields = require("../middlewares/validateFields")
 const authenticate = require("../middlewares/authenticate")
+const { demoAccountsEnabled } = require("../config/demo")
 
 const router = Router()
 
@@ -102,6 +104,14 @@ router.post(
 )
 
 router.post("/logout", authenticate, logout)
+
+// Cuentas demo para el login de la app. En producción esta ruta no existe (404).
+router.get("/demo-accounts", (req, res, next) => {
+    if (!demoAccountsEnabled()) {
+        return res.status(404).json({ success: false, message: "Recurso no encontrado." })
+    }
+    next()
+}, demoAccounts)
 
 /* --------------------- Verificación del medio de contacto (ACC-01) --------------------- */
 

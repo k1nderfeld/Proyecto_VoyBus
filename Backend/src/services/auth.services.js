@@ -11,6 +11,7 @@ const mailService = require("./mail.services")
 const smsService = require("./sms.services")
 const authConfig = require("../config/auth")
 const googleVerifier = require("../utils/googleVerifier")
+const { demoAccounts, demoPassword } = require("../config/demo")
 
 const dummyPasswordHash = "$2b$12$uCfjYQuaRpqMm7HoqQYv3O0fzoA4vMFpltTS2mqjwLwnl0zCBHT0y"
 
@@ -312,6 +313,26 @@ class AuthService {
         await this.assertTwoFactor(user, data.twoFactorCode)
 
         return this.createSession(user)
+    }
+
+    // Cuentas demo que existen, están activas y todavía usan la contraseña de SEED_DEMO_PASSWORD.
+    // Si alguien cambió la contraseña de una cuenta demo, no se ofrece con una clave que ya no sirve.
+    async listDemoAccounts() {
+        const password = demoPassword()
+        const users = await User.findAll({
+            where: { email: demoAccounts.map((account) => account.email), status: "active" }
+        })
+        const available = []
+
+        for (const account of demoAccounts) {
+            const user = users.find((candidate) => candidate.email === account.email)
+
+            if (user && (await bcrypt.compare(password, user.password))) {
+                available.push({ key: account.key, label: account.label, role: account.role, email: account.email, password })
+            }
+        }
+
+        return available
     }
 
     async logout(sessionId) {

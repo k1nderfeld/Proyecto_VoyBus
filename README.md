@@ -69,7 +69,9 @@ npx expo start -c
 | Pasajero | `pasajero@voybus.cl` | `Demo123!` | Pasajero, con 6 viajes en su historial |
 | Conductor | `conductor@voybus.cl` | `Demo123!` | Conductor |
 
-La contraseña de las cuentas demo se puede cambiar con `SEED_DEMO_PASSWORD`. Las cuentas demo ya están verificadas. En modo desarrollo, la pantalla de inicio de sesión ofrece completar la cuenta del pasajero con un botón.
+La contraseña de las cuentas demo se puede cambiar con `SEED_DEMO_PASSWORD` en `Backend/.env` (antes de ejecutar el seed). Si la contraseña tiene `#`, escríbela entre comillas (`SEED_DEMO_PASSWORD="Clave#123"`): sin comillas, en un `.env` el `#` inicia un comentario y la clave queda cortada. Las cuentas demo ya están verificadas.
+
+En modo desarrollo, la pantalla de inicio de sesión muestra las cuentas demo del pasajero y del conductor con un botón *Usar*. La app las pide al backend (`GET /api/auth/demo-accounts`, que no existe en producción), así que siempre usa la contraseña de `SEED_DEMO_PASSWORD`. Si una cuenta demo cambió de contraseña, deja de ofrecerse.
 
 ## Verificación de cuentas, dos pasos y Google
 
