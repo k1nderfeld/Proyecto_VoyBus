@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "VoyBus",
+    "slug": "voybus",
+    "version": "1.0.0",
+    "scheme": "voybus",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "cl.voybus.app"
+    },
+    "android": {
+      "package": "cl.voybus.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#03135D",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#03135D"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "VoyBus usa tu ubicación solo para centrar el mapa y mostrarte los paraderos cercanos."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "VoyBus usa tus fotos solo para que elijas tu foto de perfil.",
+          "cameraPermission": "VoyBus usa la cámara solo para que tomes tu foto de perfil."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
